@@ -1,0 +1,129 @@
+// Bibliotecas
+#include <LiquidCrystal_I2C.h> 
+#include <DHT.h>
+
+// Pinos do Sistema
+const int sensorGasPin = A0;  
+const int ledVerde = 9;       
+const int ledAzul = 10;    
+const int ledVermelho = 8;   
+const int pinoBuzzer = 12;        
+const int pinoBotaoBuzzer = 5;  
+const int pinoDHT = 13; 
+const int tipoDHT = DHT11;
+
+// Limites para o sensor de gás
+const int limiteRuimGas = 100;
+const int limiteMedioGas = 94;
+
+// Objetos do sistema
+LiquidCrystal_I2C lcd(0x27, 16, 2); // LCD
+DHT dht(pinoDHT, tipoDHT); // DHT11
+
+// Controle do buzzer
+bool buzzerMute = false;
+
+void setup() {
+  // Configuração dos pinos
+  pinMode(ledVerde, OUTPUT);
+  pinMode(ledAzul, OUTPUT);
+  pinMode(ledVermelho, OUTPUT);
+  pinMode(pinoBuzzer, OUTPUT);
+  pinMode(pinoBotaoBuzzer, INPUT_PULLUP);
+
+  lcd.init(); // Inicia o LCD
+  lcd.backlight(); // Luz de fundo
+  dht.begin(); // Inicia o DHT11
+  Serial.begin(9600); // Comunicação Serial
+
+  // Mensagem de inicialização
+  lcd.setCursor(0, 0);
+  lcd.print("Monitor de Ar...");
+  lcd.setCursor(0, 1);
+  lcd.print("Iniciando...");
+  delay(2000);
+  lcd.clear();
+}
+
+void loop() {
+  // Leitura dos sensores
+  int valorSensor = analogRead(sensorGasPin); // MQ-2
+  float umidade = dht.readHumidity(); // DHT11 - Umidade
+  float temperatura = dht.readTemperature(); // DHT11 - Temperatura
+
+  delay(200); 
+  }
+
+  // Controle do buzzer (mute)
+  if (digitalRead(pinoBotaoBuzzer) == LOW) {
+    buzzerMute = true; //  Variável para controlar
+    noTone(pinoBuzzer); // Silencia o buzzer
+  }
+  if (valorSensor <= limiteMedioGas) {
+    buzzerMute = false;
+  }
+
+  // Mostra os valores no LCD e Serial
+  lcd.setCursor(0, 0); 
+  lcd.print("Gas:");
+  lcd.print(valorSensor);
+  lcd.print("    ");
+  // Serial
+  Serial.print("Gas: ");
+  Serial.print(valorSensor);
+  Serial.print("  Temp: ");
+  Serial.print(temperatura);
+  Serial.print("C  Umid: ");
+  Serial.println(umidade);
+
+  // Níveis do sensor de gás
+  // Alerta máximo
+  if (valorSensor > limiteRuimGas) {
+    // Acende led vermelho e liga o buzzer se não estiver silenciado
+    digitalWrite(ledVermelho, HIGH);
+    digitalWrite(ledAzul, LOW);
+    digitalWrite(ledVerde, LOW);
+    if (!buzzerMute) {
+      tone(pinoBuzzer, 364);
+      delay(500);
+      noTone(pinoBuzzer);
+    }
+    // Mensagem LCD
+    lcd.setCursor(0, 1);
+    lcd.print("FUMACA: PERIGO!");
+
+  // Alerta médio
+  } else if (valorSensor > limiteMedioGas) {
+    // Acende led amarelo e silencia o buzzer
+    digitalWrite(ledVermelho, HIGH);
+    digitalWrite(ledAzul, LOW);
+    digitalWrite(ledVerde, HIGH);
+    noTone(pinoBuzzer);
+
+    // Informações dos sensores no LCD
+    lcd.setCursor(0, 1);
+    lcd.print("T:");
+    lcd.print(temperatura);
+    lcd.print(" U:");
+    lcd.print(umidade);
+    lcd.print("  ");
+ 
+  // Nível normal
+  } else {
+    // Acende led verde e silencia o buzzer
+    digitalWrite(ledVermelho, LOW);
+    digitalWrite(ledAzul, LOW);
+    digitalWrite(ledVerde, HIGH);
+    noTone(pinoBuzzer);
+
+    // Informações dos sensores no LCD
+    lcd.setCursor(0, 1);
+    lcd.print("T:");
+    lcd.print(temperatura);
+    lcd.print(" U:");
+    lcd.print(umidade);
+    lcd.print("  "); 
+  }
+  // Delay para otimização
+  delay(1000);
+}
